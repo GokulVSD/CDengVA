@@ -7,3 +7,4 @@ cd CDengVA/
 git pull
 sudo python3 -m pip install -r requirements.txt
 sudo python3 app.py
+sudo gunicorn -b 0.0.0.0:80 -w 8 'app:app'
