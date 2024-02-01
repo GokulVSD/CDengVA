@@ -6,6 +6,11 @@ model = read_csv("model_res.csv")
 app = Flask(__name__)
 
 
+@app.route('/', methods=['GET'])
+def upload_file():
+    return "Server is running!"
+
+
 @app.route('/', methods=['POST'])
 def upload_file():
     image_name = request.files['inputFile'].filename.split('.')[0]
