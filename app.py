@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 
 @app.route('/', methods=['GET'])
-def upload_file():
+def get_root():
     return "Server is running!"
 
 
