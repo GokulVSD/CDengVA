@@ -1,7 +1,12 @@
 from flask import Flask, request
 from pandas import read_csv
 
-model = read_csv("model_res.csv")
+csv_model = read_csv("model_res.csv")
+
+model = {}
+
+for row in csv_model.iterrows():
+    model[row[1]['Image']] = row[1]['Results']
 
 app = Flask(__name__)
 
@@ -14,7 +19,7 @@ def get_root():
 @app.route('/', methods=['POST'])
 def upload_file():
     image_name = request.files['inputFile'].filename.split('.')[0]
-    return image_name + ':' + model.loc[(model['Image'] == image_name)]['Results'].values[0]
+    return image_name + ':' + model[image_name]
 
 
 if __name__ == "__main__":
