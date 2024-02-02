@@ -1,3 +1,5 @@
-flask
+fastapi
+python-multipart
 pandas
+uvicorn[standard]
 gunicorn

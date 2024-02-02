@@ -6,4 +6,4 @@ git clone https://github.com/GokulVSD/CDengVA.git
 cd CDengVA/
 git pull
 sudo python3 -m pip install -r requirements.txt
-sudo gunicorn -b 0.0.0.0:80 -w 5 --threads 4 'app:app'
+sudo gunicorn app:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:80
