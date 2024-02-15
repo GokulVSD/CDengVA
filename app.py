@@ -4,7 +4,7 @@ from pandas import read_csv
 
 app = FastAPI()
 
-csv_model = read_csv("model_res.csv")
+csv_model = read_csv("model.csv")
 
 model = {}
 
