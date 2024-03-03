@@ -18,14 +18,13 @@ def main():
 
         # Read message from request sqs.
         messages = req_queue.receive_messages(
-            MessageAttributeNames=["All"],
             MaxNumberOfMessages=1,
-            VisibilityTimeout=30,
+            VisibilityTimeout=20,
             WaitTimeSeconds=10,
         )
 
         if not messages:
-            break
+            continue
 
         message = messages[0]
 
@@ -54,10 +53,10 @@ def main():
             os.remove(s3_image_filename)
 
         # Send message to response sqs.
-        resp_queue.send_message(MessageBody=image_name)
+        resp_queue.send_message(MessageBody=image_name + ':' + result)
 
         # After successfully processing this request, delete the message.
-        req_queue.delete_messages(Entries=[{"Id": 0, "ReceiptHandle": message.receipt_handle}])
+        message.delete()
 
 
 if __name__ == "__main__":
