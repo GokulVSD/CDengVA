@@ -6,13 +6,14 @@ import boto3
 sqs = boto3.resource('sqs', region_name='us-east-1')
 s3 = boto3.resource('s3', region_name='us-east-1')
 
+req_queue = sqs.get_queue_by_name(QueueName="1229503862-req-queue")
+resp_queue = sqs.get_queue_by_name(QueueName="1229503862-resp-queue")
+
+in_bucket = s3.Bucket('1229503862-in-bucket')
+out_bucket = s3.Bucket('1229503862-out-bucket')
+
 
 def main():
-    req_queue = sqs.get_queue_by_name(QueueName="1229503862-req-queue")
-    resp_queue = sqs.get_queue_by_name(QueueName="1229503862-resp-queue")
-
-    in_bucket = s3.Bucket('1229503862-in-bucket')
-    out_bucket = s3.Bucket('1229503862-out-bucket')
 
     while True:
 
