@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
@@ -30,7 +30,7 @@ async def upload_file(request: Request):
 
     in_bucket.put_object(
         Key=image_filename,
-        Body=image_file,
+        Body=image_file.file,
     )
 
     req_queue.send_message(MessageBody=image_filename)
@@ -38,8 +38,8 @@ async def upload_file(request: Request):
     image_name = image_filename.split('.')[0]
 
     while True:
-        time.sleep(3)
-        messages = req_queue.receive_messages()
+        await asyncio.sleep(3)
+        messages = resp_queue.receive_messages()
 
         if not messages:
             continue
