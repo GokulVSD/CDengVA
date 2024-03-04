@@ -1,3 +1,5 @@
+import time
+
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 import boto3
@@ -36,6 +38,7 @@ async def upload_file(request: Request):
     image_name = image_filename.split('.')[0]
 
     while True:
+        time.sleep(3)
         messages = req_queue.receive_messages()
 
         if not messages:
