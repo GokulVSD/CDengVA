@@ -16,11 +16,24 @@ class Controller:
         self.max_instances = max_instances
 
     def req_queue_length(self):
-        response = self.sqs.get_queue_attributes(
-            QueueUrl=self.req_queue_url,
-            AttributeNames=['ApproximateNumberOfMessages']
-        )
-        return int(response['Attributes']['ApproximateNumberOfMessages'])
+        """
+        Check the queue 3 times in 3 seconds. If any two match, return it, else return the average of all 3.
+        """
+        count = []
+        for _ in range(3):
+            response = self.sqs.get_queue_attributes(
+                QueueUrl=self.req_queue_url,
+                AttributeNames=['ApproximateNumberOfMessages', 'ApproximateNumberOfMessagesNotVisible']
+            )
+            visible_messages = int(response['Attributes']['ApproximateNumberOfMessages'])
+            invisible_messages = int(response['Attributes']['ApproximateNumberOfMessagesNotVisible'])
+            count.append(visible_messages + invisible_messages)
+            time.sleep(1)
+        if count[0] == count[1] or count[0] == count[2]:
+            return count[0]
+        if count[1] == count[2]:
+            return count[1]
+        return (count[0] + count[1] + count[3]) // 3
 
     def instance_count(self):
         response = self.autoscaling.describe_auto_scaling_groups(
@@ -45,8 +58,10 @@ class Controller:
         """
         instance_count = self.instance_count()
         que_length = self.req_queue_length()
+
         print("Instances: ", instance_count)
         print("Queue length: ", que_length)
+
         if instance_count < que_length:
             new_instance_count = instance_count + (que_length - instance_count)
             new_instance_count = min(20, new_instance_count)
@@ -64,5 +79,5 @@ if __name__ == "__main__":
     controller = Controller(asg_name, req_queue_url)
 
     while True:
-        time.sleep(10)
+        time.sleep(2)
         controller.autoscale()
