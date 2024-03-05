@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 import boto3
@@ -38,8 +36,11 @@ async def upload_file(request: Request):
     image_name = image_filename.split('.')[0]
 
     while True:
-        await asyncio.sleep(3)
-        messages = resp_queue.receive_messages()
+        messages = resp_queue.receive_messages(
+            MaxNumberOfMessages=10,
+            VisibilityTimeout=0,
+            WaitTimeSeconds=0,
+        )
 
         if not messages:
             continue

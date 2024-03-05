@@ -2,33 +2,67 @@ import time
 
 import boto3
 
-sqs = boto3.resource('sqs', region_name='us-east-1')
+req_queue_url = "https://sqs.us-east-1.amazonaws.com/851725282796/1229503862-req-queue"
 
-req_queue = sqs.get_queue_by_name(QueueName="1229503862-req-queue")
-
-autoscale = boto3.client('autoscaling')
+asg_name = "app-tier-scaling-group"
 
 class Controller:
 
-    def __init__(self, autoscale, req_queue, max_instances=20, max_instances_per_cycle=3):
-        self.req_queue = req_queue
+    def __init__(self, asg_name, req_queue_url, max_instances=20):
+        self.autoscaling = boto3.client('autoscaling')
+        self.asg_name = asg_name
+        self.sqs = boto3.client('sqs')
+        self.req_queue_url = req_queue_url
         self.max_instances = max_instances
-        self.max_instances_per_cycle = max_instances_per_cycle
 
-    def autoscale():
+    def req_queue_length(self):
+        response = self.sqs.get_queue_attributes(
+            QueueUrl=self.req_queue_url,
+            AttributeNames=['ApproximateNumberOfMessages']
+        )
+        return int(response['Attributes']['ApproximateNumberOfMessages'])
+
+    def instance_count(self):
+        response = self.autoscaling.describe_auto_scaling_groups(
+            AutoScalingGroupNames=[self.asg_name],
+            MaxRecords=1
+        )
+        return len(response['AutoScalingGroups'][0]['Instances'])
+
+    def set_desired_capacity(self, capacity):
+        self.autoscaling.set_desired_capacity(
+            AutoScalingGroupName=self.asg_name,
+            DesiredCapacity=capacity,
+        )
+
+    def autoscale(self):
         """
         Policy:
         1. If req_queue has more messages than current instances, scale out upto number of
-        messages in queue with a maximum of max_instances_per_cycle for every call to the method.
+        messages up to 20.
         2. If req_queue has less messages than current instances, scale in till number of messages in
-        queue with a maximum of max_instances_per_cycle for every call to the method.
+        queue down to 0.
         """
-        pass
+        instance_count = self.instance_count()
+        que_length = self.req_queue_length()
+        print("Instances: ", instance_count)
+        print("Queue length: ", que_length)
+        if instance_count < que_length:
+            new_instance_count = instance_count + (que_length - instance_count)
+            new_instance_count = min(20, new_instance_count)
+            print("Setting capacity to: ", new_instance_count)
+            self.set_desired_capacity(new_instance_count)
+
+        elif instance_count > que_length:
+            new_instance_count = instance_count - (instance_count - que_length)
+            new_instance_count = max(0, new_instance_count)
+            print("Setting capacity to: ", new_instance_count)
+            self.set_desired_capacity(new_instance_count)
 
 
 if __name__ == "__main__":
-    controller = Controller(autoscale, req_queue)
+    controller = Controller(asg_name, req_queue_url)
 
     while True:
-        time.sleep(2)
+        time.sleep(10)
         controller.autoscale()
