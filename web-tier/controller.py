@@ -1,4 +1,5 @@
 import time
+from collections import Counter
 
 import boto3
 
@@ -15,12 +16,14 @@ class Controller:
         self.req_queue_url = req_queue_url
         self.max_instances = max_instances
 
+
     def req_queue_length(self):
         """
-        Check the queue 3 times in 3 seconds. If any two match, return it, else return the average of all 3.
+        Check the queue 5 times in 2.5 seconds. Return the length with most frequency
+        if greater than 2, else the average of all.
         """
         count = []
-        for _ in range(3):
+        for _ in range(5):
             response = self.sqs.get_queue_attributes(
                 QueueUrl=self.req_queue_url,
                 AttributeNames=['ApproximateNumberOfMessages', 'ApproximateNumberOfMessagesNotVisible']
@@ -28,12 +31,15 @@ class Controller:
             visible_messages = int(response['Attributes']['ApproximateNumberOfMessages'])
             invisible_messages = int(response['Attributes']['ApproximateNumberOfMessagesNotVisible'])
             count.append(visible_messages + invisible_messages)
-            time.sleep(1)
-        if count[0] == count[1] or count[0] == count[2]:
-            return count[0]
-        if count[1] == count[2]:
-            return count[1]
-        return (count[0] + count[1] + count[3]) // 3
+            time.sleep(0.5)
+
+        counts = Counter(count)
+
+        if counts.most_common(1)[0][1] > 2:
+            return counts.most_common(1)[0][0]
+
+        return sum(count) // len(count)
+
 
     def instance_count(self):
         response = self.autoscaling.describe_auto_scaling_groups(
@@ -42,11 +48,13 @@ class Controller:
         )
         return len(response['AutoScalingGroups'][0]['Instances'])
 
+
     def set_desired_capacity(self, capacity):
         self.autoscaling.set_desired_capacity(
             AutoScalingGroupName=self.asg_name,
             DesiredCapacity=capacity,
         )
+
 
     def autoscale(self):
         """
@@ -79,5 +87,5 @@ if __name__ == "__main__":
     controller = Controller(asg_name, req_queue_url)
 
     while True:
-        time.sleep(2)
+        time.sleep(1)
         controller.autoscale()

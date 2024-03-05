@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import PlainTextResponse
 import boto3
 
@@ -18,10 +18,12 @@ async def get_root():
     return "Web-tier is running!"
 
 
-@app.post('/', response_class=PlainTextResponse)
-async def upload_file(request: Request):
-    form = await request.form()
+async def get_form_data(request: Request):
+    return await request.form()
 
+
+@app.post('/', response_class=PlainTextResponse)
+async def upload_file(form = Depends(get_form_data)):
     image_file = form['inputFile']
 
     image_filename = image_file.filename
