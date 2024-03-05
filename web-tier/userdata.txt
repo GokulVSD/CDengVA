@@ -26,5 +26,5 @@ cd CDengVA/
 git pull
 cd web-tier/
 sudo python3 -m pip install -r requirements.txt
-sudo gunicorn app:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:80 --timeout 0 --daemon
+sudo gunicorn app:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:80 --timeout 0 --daemon
 bash -c "exec -a asg_controller sudo python3 controller.py &"

@@ -23,7 +23,7 @@ async def get_form_data(request: Request):
 
 
 @app.post('/', response_class=PlainTextResponse)
-async def upload_file(form = Depends(get_form_data)):
+def upload_file(form = Depends(get_form_data)):
     image_file = form['inputFile']
 
     image_filename = image_file.filename
