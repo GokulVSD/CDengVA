@@ -1,7 +1,5 @@
-import random
 import os
 import subprocess
-import time
 
 import boto3
 
@@ -18,14 +16,10 @@ out_bucket = s3.Bucket('1229503862-out-bucket')
 def main():
 
     while True:
-        # Sleep randomly between 1 and 5 seconds to reduce chance of race conditions,
-        # since SQS standard queue can duplicate messages to different workers.
-        time.sleep(random.uniform(1, 5))
-
         # Read message from request sqs.
         messages = req_queue.receive_messages(
             MaxNumberOfMessages=1,
-            VisibilityTimeout=30,
+            VisibilityTimeout=5,
             WaitTimeSeconds=0,
         )
 
