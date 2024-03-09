@@ -1,5 +1,4 @@
 import time
-from collections import Counter
 
 import boto3
 
@@ -17,31 +16,17 @@ class Controller:
         self.max_instances = max_instances
         self.target_to_reach = 0
         self.target_not_reached_counter = 0
-        self.max_target_not_reached_counter = 25
+        self.max_target_not_reached_counter = 15
 
 
     def req_queue_length(self):
-        """
-        Check the queue 5 times in 2.5 seconds. Return the length with most frequency
-        if greater than 2, else the average of all.
-        """
-        count = []
-        for _ in range(5):
-            response = self.sqs.get_queue_attributes(
-                QueueUrl=self.req_queue_url,
-                AttributeNames=['ApproximateNumberOfMessages', 'ApproximateNumberOfMessagesNotVisible']
-            )
-            visible_messages = int(response['Attributes']['ApproximateNumberOfMessages'])
-            invisible_messages = int(response['Attributes']['ApproximateNumberOfMessagesNotVisible'])
-            count.append(visible_messages + invisible_messages)
-            time.sleep(0.5)
-
-        counts = Counter(count)
-
-        if counts.most_common(1)[0][1] > 2:
-            return counts.most_common(1)[0][0]
-
-        return sum(count) // len(count)
+        response = self.sqs.get_queue_attributes(
+            QueueUrl=self.req_queue_url,
+            AttributeNames=['ApproximateNumberOfMessages', 'ApproximateNumberOfMessagesNotVisible']
+        )
+        visible_messages = int(response['Attributes']['ApproximateNumberOfMessages'])
+        invisible_messages = int(response['Attributes']['ApproximateNumberOfMessagesNotVisible'])
+        return visible_messages + invisible_messages
 
 
     def running_instance_count(self):
@@ -93,9 +78,9 @@ class Controller:
         if instance_count < que_length:
             new_instance_count = instance_count + (que_length - instance_count)
             new_instance_count = min(20, new_instance_count)
-            print("Setting capacity to: ", new_instance_count)
             self.target_to_reach = max(self.target_to_reach, new_instance_count)
-            self.set_desired_capacity(new_instance_count)
+            print("Setting capacity to: ", self.target_to_reach)
+            self.set_desired_capacity(self.target_to_reach)
 
         elif instance_count > que_length:
             # Do not scale down until target_to_reach has been reached.
@@ -111,5 +96,5 @@ if __name__ == "__main__":
     controller = Controller(asg_name, req_queue_url)
 
     while True:
-        time.sleep(3)
+        time.sleep(5)
         controller.autoscale()
