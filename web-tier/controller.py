@@ -15,6 +15,7 @@ class Controller:
         self.sqs = boto3.client('sqs')
         self.req_queue_url = req_queue_url
         self.max_instances = max_instances
+        self.target_to_reach = 0
 
 
     def req_queue_length(self):
@@ -41,12 +42,14 @@ class Controller:
         return sum(count) // len(count)
 
 
-    def instance_count(self):
+    def running_instance_count(self):
         response = self.autoscaling.describe_auto_scaling_groups(
             AutoScalingGroupNames=[self.asg_name],
             MaxRecords=1
         )
-        return len(response['AutoScalingGroups'][0]['Instances'])
+        instances = response['AutoScalingGroups'][0]['Instances']
+        running_instances = [instance for instance in instances if instance['LifecycleState'] == 'InService']
+        return len(running_instances)
 
 
     def set_desired_capacity(self, capacity):
@@ -64,7 +67,7 @@ class Controller:
         2. If req_queue has less messages than current instances, scale in till number of messages in
         queue down to 0.
         """
-        instance_count = self.instance_count()
+        instance_count = self.running_instance_count()
         que_length = self.req_queue_length()
 
         print("Instances: ", instance_count)
@@ -74,9 +77,14 @@ class Controller:
             new_instance_count = instance_count + (que_length - instance_count)
             new_instance_count = min(20, new_instance_count)
             print("Setting capacity to: ", new_instance_count)
+            target_to_reach = max(target_to_reach, new_instance_count)
             self.set_desired_capacity(new_instance_count)
 
         elif instance_count > que_length:
+            # Do not scale down until target_to_reach has been reached.
+            if instance_count < target_to_reach:
+                return
+            target_to_reach = 0
             new_instance_count = instance_count - (instance_count - que_length)
             new_instance_count = max(0, new_instance_count)
             print("Setting capacity to: ", new_instance_count)
@@ -87,5 +95,5 @@ if __name__ == "__main__":
     controller = Controller(asg_name, req_queue_url)
 
     while True:
-        time.sleep(1)
+        time.sleep(3)
         controller.autoscale()

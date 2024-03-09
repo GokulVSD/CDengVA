@@ -63,7 +63,6 @@ def main():
 
         # After successfully processing this request, delete the message.
         message.delete()
-        break
 
 
 if __name__ == "__main__":
