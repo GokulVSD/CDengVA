@@ -9,9 +9,9 @@ asg_name = "app-tier-scaling-group"
 class Controller:
 
     def __init__(self, asg_name, req_queue_url, max_instances=20):
-        self.autoscaling = boto3.client('autoscaling')
+        self.autoscaling = boto3.client('autoscaling', region_name='us-east-1')
         self.asg_name = asg_name
-        self.sqs = boto3.client('sqs')
+        self.sqs = boto3.client('sqs', region_name='us-east-1')
         self.req_queue_url = req_queue_url
         self.max_instances = max_instances
         self.target_to_reach = 0
