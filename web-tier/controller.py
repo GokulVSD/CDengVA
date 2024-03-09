@@ -77,14 +77,16 @@ class Controller:
             new_instance_count = instance_count + (que_length - instance_count)
             new_instance_count = min(20, new_instance_count)
             print("Setting capacity to: ", new_instance_count)
-            target_to_reach = max(target_to_reach, new_instance_count)
+            self.target_to_reach = max(self.target_to_reach, new_instance_count)
             self.set_desired_capacity(new_instance_count)
 
         elif instance_count > que_length:
             # Do not scale down until target_to_reach has been reached.
-            if instance_count < target_to_reach:
+            if instance_count < self.target_to_reach:
+                print("Target: ", self.target_to_reach, " not yet reached, not scaling down")
                 return
-            target_to_reach = 0
+            print("Target: ", self.target_to_reach, " reached, scaling down")
+            self.target_to_reach = 0
             new_instance_count = instance_count - (instance_count - que_length)
             new_instance_count = max(0, new_instance_count)
             print("Setting capacity to: ", new_instance_count)

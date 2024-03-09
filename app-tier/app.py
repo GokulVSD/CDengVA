@@ -25,7 +25,7 @@ def main():
         # Read message from request sqs.
         messages = req_queue.receive_messages(
             MaxNumberOfMessages=1,
-            VisibilityTimeout=10,
+            VisibilityTimeout=30,
             WaitTimeSeconds=0,
         )
 
