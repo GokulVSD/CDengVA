@@ -16,6 +16,8 @@ class Controller:
         self.req_queue_url = req_queue_url
         self.max_instances = max_instances
         self.target_to_reach = 0
+        self.target_not_reached_counter = 0
+        self.max_target_not_reached_counter = 25
 
 
     def req_queue_length(self):
@@ -58,6 +60,21 @@ class Controller:
             DesiredCapacity=capacity,
         )
 
+    def can_scale_down(self, current_instance_count):
+        if current_instance_count < self.target_to_reach:
+            self.target_not_reached_counter += 1
+            if self.target_not_reached_counter == self.max_target_not_reached_counter:
+                print("Target could not be reached, scaling down anyway")
+                self.target_not_reached_counter = 0
+                self.target_to_reach = 0
+                return True
+            else:
+                print("Target: ", self.target_to_reach, " not yet reached, not scaling down")
+                return False
+        print("Target: ", self.target_to_reach, " reached, scaling down")
+        self.target_not_reached_counter = 0
+        self.target_to_reach = 0
+        return True
 
     def autoscale(self):
         """
@@ -82,11 +99,8 @@ class Controller:
 
         elif instance_count > que_length:
             # Do not scale down until target_to_reach has been reached.
-            if instance_count < self.target_to_reach:
-                print("Target: ", self.target_to_reach, " not yet reached, not scaling down")
+            if not self.can_scale_down(instance_count):
                 return
-            print("Target: ", self.target_to_reach, " reached, scaling down")
-            self.target_to_reach = 0
             new_instance_count = instance_count - (instance_count - que_length)
             new_instance_count = max(0, new_instance_count)
             print("Setting capacity to: ", new_instance_count)
