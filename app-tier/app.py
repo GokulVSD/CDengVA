@@ -2,16 +2,28 @@ import os
 import subprocess
 
 import boto3
+# from botocore.exceptions import ClientError
 
 sqs = boto3.resource('sqs', region_name='us-east-1')
 s3 = boto3.resource('s3', region_name='us-east-1')
 
+# s3_client = boto3.client('s3')
+
 req_queue = sqs.get_queue_by_name(QueueName="1229503862-req-queue")
 resp_queue = sqs.get_queue_by_name(QueueName="1229503862-resp-queue")
 
-in_bucket = s3.Bucket('1229503862-in-bucket')
-out_bucket = s3.Bucket('1229503862-out-bucket')
+IN_BUCKET_NAME = '1229503862-in-bucket'
+OUT_BUCKET_NAME = '1229503862-out-bucket'
 
+in_bucket = s3.Bucket(IN_BUCKET_NAME)
+out_bucket = s3.Bucket(OUT_BUCKET_NAME)
+
+# def check_key_exists_in_output_bucket(key):
+#     try:
+#         s3_client.head_object(Bucket=OUT_BUCKET_NAME, Key=key)
+#         return True
+#     except ClientError as e:
+#         return False
 
 def main():
 
@@ -20,7 +32,7 @@ def main():
         # Read message from request sqs.
         messages = req_queue.receive_messages(
             MaxNumberOfMessages=1,
-            VisibilityTimeout=3,
+            VisibilityTimeout=15,
             WaitTimeSeconds=0,
         )
 
