@@ -39,11 +39,11 @@ def upload_file(form = Depends(get_form_data)):
     image_name = image_filename.split('.')[0]
 
     while True:
-        time.sleep(1)
+        time.sleep(0.5)
         messages = resp_queue.receive_messages(
             MaxNumberOfMessages=10,
             VisibilityTimeout=0,
-            WaitTimeSeconds=0,
+            WaitTimeSeconds=5,
         )
 
         if not messages:
