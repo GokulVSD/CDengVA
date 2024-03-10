@@ -16,7 +16,7 @@ class Controller:
         self.max_instances = max_instances
         self.target_to_reach = 0
         self.target_not_reached_counter = 0
-        self.max_target_not_reached_counter = 9
+        self.max_target_not_reached_counter = 8
 
 
     def req_queue_length(self):
