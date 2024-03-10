@@ -16,7 +16,7 @@ class Controller:
         self.max_instances = max_instances
         self.target_to_reach = 0
         self.target_not_reached_counter = 0
-        self.max_target_not_reached_counter = 15
+        self.max_target_not_reached_counter = 9
 
 
     def req_queue_length(self):
@@ -96,5 +96,5 @@ if __name__ == "__main__":
     controller = Controller(asg_name, req_queue_url)
 
     while True:
-        time.sleep(5)
+        time.sleep(8)
         controller.autoscale()

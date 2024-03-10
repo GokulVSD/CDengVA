@@ -1,3 +1,4 @@
+import time
 import os
 import subprocess
 
@@ -18,45 +19,46 @@ def main():
     while True:
         # Read message from request sqs.
         messages = req_queue.receive_messages(
-            MaxNumberOfMessages=1,
-            VisibilityTimeout=3,
-            WaitTimeSeconds=0,
+            MaxNumberOfMessages=5,
+            VisibilityTimeout=10,
+            WaitTimeSeconds=5,
         )
 
         if not messages:
+            time.sleep(5)
             continue
 
-        message = messages[0]
+        for message in messages:
 
-        # Download image, run inference, upload image to s3.
-        s3_image_filename = message.body
+            # Download image, run inference, upload image to s3.
+            s3_image_filename = message.body
 
-        in_bucket.download_file(s3_image_filename, s3_image_filename)
+            in_bucket.download_file(s3_image_filename, s3_image_filename)
 
-        result = subprocess.run(
-            ['python3', 'face_recognition.py', s3_image_filename],
-            stdout=subprocess.PIPE
-        ).stdout.decode('utf-8')
+            result = subprocess.run(
+                ['python3', 'face_recognition.py', s3_image_filename],
+                stdout=subprocess.PIPE
+            ).stdout.decode('utf-8')
 
-        image_name = s3_image_filename.split('.')[0]
+            image_name = s3_image_filename.split('.')[0]
 
-        with open(image_name, "w") as f:
-            f.write(result)
+            with open(image_name, "w") as f:
+                f.write(result)
 
-        out_bucket.upload_file(image_name, image_name)
+            out_bucket.upload_file(image_name, image_name)
 
-        # Cleanup.
-        if os.path.exists(image_name):
-            os.remove(image_name)
+            # Cleanup.
+            if os.path.exists(image_name):
+                os.remove(image_name)
 
-        if os.path.exists(s3_image_filename):
-            os.remove(s3_image_filename)
+            if os.path.exists(s3_image_filename):
+                os.remove(s3_image_filename)
 
-        # Send message to response sqs.
-        resp_queue.send_message(MessageBody=image_name + ':' + result)
+            # Send message to response sqs.
+            resp_queue.send_message(MessageBody=image_name + ':' + result)
 
-        # After successfully processing this request, delete the message.
-        message.delete()
+            # After successfully processing this request, delete the message.
+            message.delete()
 
 
 if __name__ == "__main__":

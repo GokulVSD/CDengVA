@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import PlainTextResponse
 import boto3
@@ -38,6 +39,7 @@ def upload_file(form = Depends(get_form_data)):
     image_name = image_filename.split('.')[0]
 
     while True:
+        time.sleep(1)
         messages = resp_queue.receive_messages(
             MaxNumberOfMessages=10,
             VisibilityTimeout=0,
