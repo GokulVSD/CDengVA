@@ -18,10 +18,10 @@ def main():
 
     while True:
         # Read message from request sqs.
-        time.sleep(2)
+        time.sleep(1)
         messages = req_queue.receive_messages(
-            MaxNumberOfMessages=5,
-            VisibilityTimeout=10,
+            MaxNumberOfMessages=3,
+            VisibilityTimeout=5,
             WaitTimeSeconds=5,
         )
 
