@@ -38,7 +38,7 @@ def upload_file(form = Depends(get_form_data)):
 
     image_name = image_filename.split('.')[0]
 
-    time.sleep(45)
+    time.sleep(60)
 
     while True:
         time.sleep(0.5)
