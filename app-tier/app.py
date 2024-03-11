@@ -29,7 +29,7 @@ def main():
             time.sleep(5)
             continue
 
-        for message in messages:
+        for message in reversed(messages):
 
             # Download image, run inference, upload image to s3.
             s3_image_filename = message.body

@@ -51,7 +51,7 @@ def upload_file(form = Depends(get_form_data)):
         if not messages:
             continue
 
-        for message in messages:
+        for message in reversed(messages):
             res = message.body
 
             if res.startswith(image_name):
