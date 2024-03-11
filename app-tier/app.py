@@ -21,7 +21,7 @@ def main():
         time.sleep(1)
         messages = req_queue.receive_messages(
             MaxNumberOfMessages=3,
-            VisibilityTimeout=5,
+            VisibilityTimeout=15,
             WaitTimeSeconds=5,
         )
 
