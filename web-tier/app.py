@@ -40,7 +40,7 @@ def upload_file(form = Depends(get_form_data)):
 
     time.sleep(45)
 
-    while True:
+    for i in range(600):
         time.sleep(0.5)
         messages = resp_queue.receive_messages(
             MaxNumberOfMessages=10,
