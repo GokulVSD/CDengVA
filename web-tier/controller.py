@@ -13,8 +13,8 @@ class Controller:
         self.desired_capacity = 0
         self.target_to_reach = 0
         self.target_not_reached_counter = 0
-        self.recreate_instance_counter_val = 10
-        self.max_target_not_reached_counter = 16
+        self.recreate_instance_counter_val = 15
+        self.max_target_not_reached_counter = 25
         self.instances = [None]*20
         self.instance_running = [False]*20
 
@@ -30,16 +30,18 @@ class Controller:
 
 
     def running_instance_count(self):
-        instance_ids = [instance_id for instance_id in self.instances if instance_id is not None]
-        resp = self.ec2.describe_instance_status(
-            InstanceIds=instance_ids,
-            IncludeAllInstances=True,
-        )
         count = 0
-        for i, instance_status in enumerate(resp['InstanceStatuses']):
-            assert instance_status['InstanceState']['InstanceId'] == self.instances[i]
-            self.instance_running[i] = instance_status['InstanceState']['Name'] == 'running'
-            count = count + (1 if self.instance_running[i] else 0)
+        instance_ids = [instance_id for instance_id in self.instances if instance_id is not None]
+        if len(instance_ids) > 0:
+            resp = self.ec2.describe_instance_status(
+                InstanceIds=instance_ids,
+                IncludeAllInstances=True,
+            )
+            for instance_status in resp['InstanceStatuses']:
+                i = self.instances.index(instance_status['InstanceId'])
+                self.instance_running[i] = instance_status['InstanceState']['Name'] == 'running'
+                count = count + (1 if self.instance_running[i] else 0)
+        return count
 
 
     def set_desired_capacity(self, capacity):
@@ -95,7 +97,7 @@ class Controller:
         self.target_to_reach = 0
         return True
 
-    def autoscale(self):
+    def scale(self):
         """
         Policy:
         1. If req_queue has more messages than current instances, scale out upto number of
@@ -119,6 +121,7 @@ class Controller:
         elif instance_count > que_length:
             # Do not scale down until target_to_reach has been reached.
             if not self.can_scale_down(instance_count):
+                self.update_instance_state()
                 return
             new_instance_count = instance_count - (instance_count - que_length)
             new_instance_count = max(0, new_instance_count)
@@ -129,8 +132,25 @@ class Controller:
 
 
 if __name__ == "__main__":
-    controller = Controller(req_queue_url)
-
     while True:
-        time.sleep(8)
-        controller.autoscale()
+        try:
+            client = boto3.client('ec2', region_name='us-east-1')
+            del_instances = list(
+                boto3.resource('ec2', region_name='us-east-1').instances.filter(
+                    Filters=[
+                        {
+                            'Name': 'tag:Name',
+                            'Values': ["app-tier-instance*"]
+                        },
+                    ],
+                )
+            )
+            del_instances = [instance.id for instance in del_instances]
+            if len(del_instances) > 0:
+                client.terminate_instances(InstanceIds=del_instances)
+            controller = Controller(req_queue_url)
+            while True:
+                time.sleep(5)
+                controller.scale()
+        except Exception:
+            print("Controller state has been compromised, nuking all app-tier instances")
