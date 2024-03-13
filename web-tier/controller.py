@@ -4,19 +4,19 @@ import boto3
 
 req_queue_url = "https://sqs.us-east-1.amazonaws.com/851725282796/1229503862-req-queue"
 
-asg_name = "app-tier-scaling-group"
-
 class Controller:
 
-    def __init__(self, asg_name, req_queue_url, max_instances=20):
-        self.autoscaling = boto3.client('autoscaling', region_name='us-east-1')
-        self.asg_name = asg_name
+    def __init__(self, req_queue_url):
         self.sqs = boto3.client('sqs', region_name='us-east-1')
+        self.ec2 = boto3.client('ec2', region_name='us-east-1')
         self.req_queue_url = req_queue_url
-        self.max_instances = max_instances
+        self.desired_capacity = 0
         self.target_to_reach = 0
         self.target_not_reached_counter = 0
-        self.max_target_not_reached_counter = 10
+        self.recreate_instance_counter_val = 10
+        self.max_target_not_reached_counter = 16
+        self.instances = [None]*20
+        self.instance_running = [False]*20
 
 
     def req_queue_length(self):
@@ -30,20 +30,54 @@ class Controller:
 
 
     def running_instance_count(self):
-        response = self.autoscaling.describe_auto_scaling_groups(
-            AutoScalingGroupNames=[self.asg_name],
-            MaxRecords=1
+        instance_ids = [instance_id for instance_id in self.instances if instance_id is not None]
+        resp = self.ec2.describe_instance_status(
+            InstanceIds=instance_ids,
+            IncludeAllInstances=True,
         )
-        instances = response['AutoScalingGroups'][0]['Instances']
-        running_instances = [instance for instance in instances if instance['LifecycleState'] == 'InService']
-        return len(running_instances)
+        count = 0
+        for i, instance_status in enumerate(resp['InstanceStatuses']):
+            assert instance_status['InstanceState']['InstanceId'] == self.instances[i]
+            self.instance_running[i] = instance_status['InstanceState']['Name'] == 'running'
+            count = count + (1 if self.instance_running[i] else 0)
 
 
     def set_desired_capacity(self, capacity):
-        self.autoscaling.set_desired_capacity(
-            AutoScalingGroupName=self.asg_name,
-            DesiredCapacity=capacity,
+        self.desired_capacity = capacity
+
+
+    def create_instance(self, name):
+        resp = self.ec2.run_instances(
+            LaunchTemplate={
+                'LaunchTemplateName': 'app-tier-template'
+            },
+            TagSpecifications=[
+                {
+                    'ResourceType': 'instance',
+                    'Tags': [
+                        {
+                            'Key': 'Name',
+                            'Value': name,
+                        },
+                    ]
+                },
+            ],
+            MaxCount=1,
+            MinCount=1,
         )
+        return resp['Instances'][0]['InstanceId']
+
+    def update_instance_state(self):
+        for i, instance in enumerate(self.instances):
+            if i < self.desired_capacity and instance is not None and not self.instance_running[i] and self.target_not_reached_counter == self.recreate_instance_counter_val:
+                print("Recreating instance: ", i + 1)
+                self.ec2.terminate_instances(InstanceIds=[instance])
+                self.instances[i] = self.instances[i] = self.create_instance('app-tier-instance-' + str(i + 1))
+            elif i < self.desired_capacity and instance is None:
+                self.instances[i] = self.create_instance('app-tier-instance-' + str(i + 1))
+            elif i >= self.desired_capacity and instance is not None:
+                 self.ec2.terminate_instances(InstanceIds=[instance])
+                 self.instances[i] = None
 
     def can_scale_down(self, current_instance_count):
         if current_instance_count < self.target_to_reach:
@@ -91,9 +125,11 @@ class Controller:
             print("Setting capacity to: ", new_instance_count)
             self.set_desired_capacity(new_instance_count)
 
+        self.update_instance_state()
+
 
 if __name__ == "__main__":
-    controller = Controller(asg_name, req_queue_url)
+    controller = Controller(req_queue_url)
 
     while True:
         time.sleep(8)
